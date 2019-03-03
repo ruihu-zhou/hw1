@@ -1,0 +1,197 @@
+q2///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+clc
+clear
+
+data = double(imread("lena.bmp"));
+data1 = zeros(512);
+for i = 0:7
+    t = 2^i;
+    data1 = floor (data / t);
+    str = sprintf("lena%d.bmp",8-i);
+    imwrite(uint8(data1),str);
+    subplot(2,4,i + 1);
+    imshow((data1),[0,256/t - 1]);
+    title(sprintf("gray level is %d bits",8-i));
+end
+
+q3///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+clc
+clear
+
+data = double(imread("lena.bmp"));
+mean_value = mean(mean(data,1),2);
+std_value = std2(data)^2;
+
+
+q4///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+clc;
+clear
+datas = imread("lena.bmp");
+[row, col] = size(datas);
+
+
+dst_row = 2048;
+dst_col = 2048;
+data = zeros(row + 4,col + 4);
+data(3:row + 2, 3:col + 2) = datas;
+
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = round(i * row / dst_row);
+        t2 = round(j * col / dst_col);
+        dst_data(i,j) = data(t1 + 2,t2 + 2);
+    end
+end
+imwrite(uint8(dst_data),"nearest.bmp");
+
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = floor(i * row / dst_row);
+        t11 = i * row / dst_row - t1;
+        t2 = floor(j * col / dst_col);
+        t21 = j * col / dst_col - t2;  
+        dst_data1(i,j) = t21 * (data(t1 + 2,t2 + 2) * t11 + data(t1 + 2,t2 + 3) * (1 - t11)) + (1 - t21) * (data(t1 + 3,t2 + 2) * t11 + data(t1 + 3,t2 + 3) * (1 - t11));
+    end
+end
+imwrite(uint8(dst_data1),"bilinear.bmp");
+
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = floor(i * row / dst_row);
+        t11 = i * row / dst_row - t1;
+        t2 = floor(j * col / dst_col);
+        t21 = j * col / dst_col - t2;
+         
+        A = [ SS(t11 + 1),SS(t11 + 0),SS(t11 - 1),SS(t11 - 2)];
+        C = [ SS(t21 + 1),SS(t21 + 0),SS(t21 - 1),SS(t21 - 2)]';
+        B = [data(t1 + 1,t2 + 1),data(t1 + 1,t2 + 2),data(t1 + 1,t2 + 3),data(t1 + 1,t2 + 4);
+            data(t1 + 2,t2 + 1),data(t1 + 2,t2 + 2),data(t1 + 2,t2 + 3),data(t1 + 2,t2 + 4);
+            data(t1 + 3,t2 + 1),data(t1 + 3,t2 + 2),data(t1 + 3,t2 + 3),data(t1 + 3,t2 + 4);
+            data(t1 + 4,t2 + 1),data(t1 + 4,t2 + 2),data(t1 + 4,t2 + 3),data(t1 + 4,t2 + 4)];
+        dst_data2(i,j) = A * B * C;
+    end
+end
+
+imwrite(uint8(dst_data2),"cubic.bmp");
+
+
+function [s] = SS(x)
+t = abs(x);
+if ( 0 <= t && t < 1) s = 1 - 2 * t ^2 + t^3;
+elseif(1 <= t && t < 2) s = 4 - 8 * t + 5 * t ^2 - t^3;
+else s = 0;
+end
+end
+
+q5///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+clc;
+clear;
+data = imread("lena.bmp");
+
+[row col] = size(data);
+T1 = [1 1.5 0;0 1 0;0 0 1];
+tt = [1 1 row row;1 col 1 col;1 1 1 1]'* T1^(-1);
+t2 = round(max(tt,[],1) - min(tt,[],1));
+for i = 1:t2(1)
+    for j = 1:t2(2)
+      t = round( [i j 1] * T1^(-1) );
+        if ( 513 > t(1) && t(1) > 0 &&  513 > t(2) && t(2) > 0 )
+            dst_data(i,j) = data(t(1),t(2));
+        end
+    end
+end
+
+for i = 1:3
+        adata =inter(dst_data,2048,2048,i);
+        imwrite(adata,sprintf("shear%d.bmp",i))
+end
+
+
+clc;
+clear;
+data = imread("elain1.bmp");
+[row col] = size(data);
+% T1 = [cos(pi/6) sin(pi/6) 0;-sin(pi/6) cos(pi/6) 0;1 1 1];
+T1 = [cos(pi/6) sin(pi/6) 0;-sin(pi/6) cos(pi/6) 0;floor(row* 0.5) 1  1];
+tt = [1 1 row row;1 col 1 col;1 1 1 1]'* T1^(-1);
+t2 = round(max(tt,[],1) - min(tt,[],1));
+
+for i = 1:t2(1)
+    for j = 1:t2(2)
+      t = round( [i j 1] * T1^(-1) );
+        if ( 513 > t(1) && t(1) > 0 &&  513 > t(2) && t(2) > 0 )
+            dst_data(i,j) = data(t(1),t(2));
+        end
+    end
+end
+
+for i = 1:3
+        adata =inter(dst_data,2048,2048,i);
+        imwrite(adata,sprintf("rotate%d.bmp",i))
+end
+
+function [adata] = inter(datas,dst_row,dst_col,choice)
+
+[row col] = size(datas);
+data = zeros(row + 4,col + 4);
+data(3:row + 2, 3:col + 2) = datas;
+
+
+if (choice == 1)
+    
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = round(i * row / dst_row);
+        t2 = round(j * col / dst_col);
+        dst_data(i,j) = data(t1 + 2,t2 + 2);
+    end
+end
+
+elseif(choice == 2)
+    
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = floor(i * row / dst_row);
+        t11 = i * row / dst_row - t1;
+        t2 = floor(j * col / dst_col);
+        t21 = j * col / dst_col - t2;  
+        dst_data(i,j) = t21 * (data(t1 + 2,t2 + 2) * t11 + data(t1 + 2,t2 + 3) * (1 - t11)) + (1 - t21) * (data(t1 + 3,t2 + 2) * t11 + data(t1 + 3,t2 + 3) * (1 - t11));
+    end
+end
+
+elseif(choice == 3)
+    
+for i = 1:dst_row
+    for j = 1:dst_col
+        t1 = floor(i * row / dst_row);
+        t11 = i * row / dst_row - t1;
+        t2 = floor(j * col / dst_col);
+        t21 = j * col / dst_col - t2;
+         
+        A = [ SS(t11 + 1),SS(t11 + 0),SS(t11 - 1),SS(t11 - 2)];
+        C = [ SS(t21 + 1),SS(t21 + 0),SS(t21 - 1),SS(t21 - 2)]';
+        B = [data(t1 + 1,t2 + 1),data(t1 + 1,t2 + 2),data(t1 + 1,t2 + 3),data(t1 + 1,t2 + 4);
+            data(t1 + 2,t2 + 1),data(t1 + 2,t2 + 2),data(t1 + 2,t2 + 3),data(t1 + 2,t2 + 4);
+            data(t1 + 3,t2 + 1),data(t1 + 3,t2 + 2),data(t1 + 3,t2 + 3),data(t1 + 3,t2 + 4);
+            data(t1 + 4,t2 + 1),data(t1 + 4,t2 + 2),data(t1 + 4,t2 + 3),data(t1 + 4,t2 + 4)];
+        dst_data(i,j) = A * B * C;
+    end
+end
+
+end
+adata = uint8(dst_data);
+figure,imshow(adata);
+
+function [s] = SS(x)
+t = abs(x);
+if ( 0 <= t && t < 1) s = 1 - 2 * t ^2 + t^3;
+elseif(1 <= t && t < 2) s = 4 - 8 * t + 5 * t ^2 - t^3;
+else s = 0;
+end
+
+end
+
+end
+
